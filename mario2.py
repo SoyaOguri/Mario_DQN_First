@@ -62,7 +62,7 @@ class MarioAgent:
         self.gamma = 0.99
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.epsilon_decay = 0.99999 # 🌟最終調整: ランダム率の減衰を早める(スプリント設定)
+        self.epsilon_decay = 0.999995 # 🌟最終調整: ランダム率の減衰を早める(スプリント設定)
         self.batch_size = 32
 
         self.burnin = 100000
@@ -134,16 +134,14 @@ def main():
     print(">>> マリオの世界を構築中... (究極完成版)")
     env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0')
     
-    # 🌟 最終調整: 行動を7種類に拡張して、マリオに緩急と自由を与える
+    # 🌟 究極の4択：後退と停止を許さないスパルタ仕様
     CUSTOM_MOVEMENT = [
-        ['NOOP'],             # 行動0: 何もしない（立ち止まる・ブレーキ）
-        ['right'],            # 行動1: 右歩き（微調整用）
-        ['right', 'A'],       # 行動2: 右ジャンプ
-        ['right', 'B'],       # 行動3: 右ダッシュ
-        ['right', 'A', 'B'],  # 行動4: 右ダッシュジャンプ
-        ['left'],             # 行動5: 左歩き（助走をつけるため）
-        ['left', 'A']         # 行動6: 左ジャンプ
+        ['right'],            # 行動0: 右歩き
+        ['right', 'A'],       # 行動1: 右ジャンプ
+        ['right', 'B'],       # 行動2: 右ダッシュ
+        ['right', 'A', 'B']   # 行動3: 右ダッシュジャンプ
     ]
+
     env = JoypadSpace(env, CUSTOM_MOVEMENT)
     
     env = SkipFrame(env, skip=4)
@@ -152,7 +150,7 @@ def main():
     env = FrameStack(env, num_stack=4)
 
     agent = MarioAgent(env.action_space.n)
-    episodes = 10000 
+    episodes = 20000 
 
     for e in range(episodes):
         print(f"\n--- エピソード {e+1} 開始 ---")
@@ -162,11 +160,21 @@ def main():
         done = False
         total_reward = 0
         step_count = 0
+        # whileループに入る直前に、前回のX座標を記録する変数を準備
+        previous_x = 0  
 
         while not done:
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)
             
+            # 🌟 NEW: サボり（立ち往生・壁引っかかり）ペナルティ
+            current_x = info.get('x_pos', 0)
+            if current_x <= previous_x:
+                reward -= 1  # 前に進んでいなければ、毎ステップ「チクッ」と減点する
+            
+            previous_x = current_x  # X座標を更新
+
+            # ... (以下、agent.remember などの既存の処理) ...
             agent.remember(state, action, reward, next_state, done)
             agent.learn()
             
