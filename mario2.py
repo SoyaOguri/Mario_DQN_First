@@ -10,8 +10,9 @@ from tensorflow.keras import layers, models, losses, optimizers
 from collections import deque
 import os
 
-# フレームスキップの仕組み (4フレーム長押し)
-
+# ==========================================
+# 🌟 フレームスキップの仕組み (4フレーム長押し)
+# ==========================================
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         super().__init__(env)
@@ -28,7 +29,7 @@ class SkipFrame(gym.Wrapper):
                 break
         return obs, total_reward, done, info
 
-#CNNモデルの構築
+# --- 1. 脳みその設計図 (CNNモデル) ---
 def build_brain(action_size):
     inputs = layers.Input(shape=(84, 84, 4))
     x = layers.Rescaling(1./255)(inputs) # ピクセル値を0〜1に正規化
@@ -44,7 +45,9 @@ def build_brain(action_size):
     model.compile(loss=losses.Huber(), optimizer=optimizers.Adam(learning_rate=0.00025))
     return model
 
-# 2. プレイヤー (MarioAgent)
+# ==========================================
+# 2. AIプレイヤー (MarioAgent)
+# ==========================================
 class MarioAgent:
     def __init__(self, action_size):
         self.action_size = action_size
@@ -54,11 +57,12 @@ class MarioAgent:
         self.target_brain = build_brain(action_size) 
         self.update_target_network() # 最初は同じ重みにしておく
         
+        # ※もしPCのメモリ(RAM)不足で落ちる場合は、ここを50000等に減らしてください
         self.memory = deque(maxlen=100000)
         self.gamma = 0.99
         self.epsilon = 1.0
         self.epsilon_min = 0.1
-        self.epsilon_decay = 0.999995 #ランダム率の減衰を早める
+        self.epsilon_decay = 0.999995 # 🌟最終調整: ランダム率の減衰を早める(スプリント設定)
         self.batch_size = 32
 
         self.burnin = 100000
@@ -123,11 +127,14 @@ class MarioAgent:
         
         self.brain.fit(states, targets, epochs=1, verbose=0)
 
+# ==========================================
 # 3. メインループ
+# ==========================================
 def main():
-    print("マリオの世界を読み込み中")
+    print(">>> マリオの世界を構築中... (究極完成版)")
     env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0')
     
+    # 🌟 究極の4択：後退と停止を許さないスパルタ仕様
     CUSTOM_MOVEMENT = [
         ['right'],            # 行動0: 右歩き
         ['right', 'A'],       # 行動1: 右ジャンプ
@@ -160,13 +167,14 @@ def main():
             action = agent.get_action(state)
             next_state, reward, done, info = env.step(action)
             
-            #壁引っ掛かりペナルティ
+            # 🌟 NEW: サボり（立ち往生・壁引っかかり）ペナルティ
             current_x = info.get('x_pos', 0)
             if current_x <= previous_x:
-                reward -= 1  # 前に進んでいなければ、毎ステップ1ポイント減点
+                reward -= 1  # 前に進んでいなければ、毎ステップ「チクッ」と減点する
             
             previous_x = current_x  # X座標を更新
 
+            # ... (以下、agent.remember などの既存の処理) ...
             agent.remember(state, action, reward, next_state, done)
             agent.learn()
             
@@ -176,23 +184,23 @@ def main():
 
             # ログ表示
             if step_count % 500 == 0: 
-                status = "ランダムな動作進行中" if agent.curr_step < agent.burnin else "学習中"
+                status = "準備運動中🏃" if agent.curr_step < agent.burnin else "猛勉強中🧠"
                 print(f"  現在 {step_count}歩 (総計 {agent.curr_step}歩) [{status}] ランダム率: {agent.epsilon*100:.1f}%")
 
             # ランダム率の低下（準備運動が終わってから開始）
             if agent.curr_step > agent.burnin and agent.epsilon > agent.epsilon_min:
                 agent.epsilon *= agent.epsilon_decay
 
-        print(f"エピソード {e+1}/{episodes} 終了 合計報酬: {total_reward}")
+        print(f"✅ エピソード {e+1}/{episodes} 終了! 合計報酬: {total_reward}")
 
         # 100エピソードごとにモデルを保存
         if (e + 1) % 100 == 0:
             save_name = f'mario_model_ep{e+1}.h5'
             agent.brain.save(save_name)
-            print(f"中間セーブ完了: {save_name} を保存しました。")
+            print(f"📂 中間セーブ完了: {save_name} を保存しました。")
 
     agent.brain.save('mario_model_final.h5')
-    print("\n最終モデルを 'mario_model_final.h5' に保存しました。")
+    print("\n🎉 すべての学習が完了しました.最終モデルを 'mario_model_final.h5' に保存しました。")
 
     env.close()
 
