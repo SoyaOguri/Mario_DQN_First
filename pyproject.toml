@@ -1,0 +1,13 @@
+[project]
+name = "mario-dqn-first"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gym==0.25.1",
+    "gym-super-mario-bros>=7.4.0",
+    "nes-py>=8.2.1",
+    "numpy>=2.2.6",
+    "tensorflow>=2.21.0",
+]
